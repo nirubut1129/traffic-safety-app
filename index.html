@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ぶじにかえろう！🏠</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: radial-gradient(ellipse at center, #2c2c54 0%, #0a0a1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Hiragino Kaku Gothic Pro', 'メイリオ', 'Yu Gothic', sans-serif;
+}
+
+#game {
+  width: 480px;
+  height: 720px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+}
+
+.scene { display:none; position:absolute; width:100%; height:100%; }
+.scene.active { display:block; }
+
+/* ─────────── TITLE ─────────── */
+#scene-title {
+  background: linear-gradient(160deg, #FF8C00, #FF4500 60%, #C62828);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; text-align:center; padding:30px; color:white;
+}
+#scene-title.active { display:flex; }
+
+.title-badge {
+  background: rgba(255,255,255,0.2);
+  border: 3px solid rgba(255,255,255,0.5);
+  border-radius: 50px;
+  padding: 8px 22px;
+  font-size: 15px;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+.title-emoji { font-size: 90px; margin-bottom: 10px; }
+.title-main {
+  font-size: 38px;
+  font-weight: bold;
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.title-sub { font-size: 17px; opacity: 0.9; margin-bottom: 36px; line-height: 1.6; }
+.btn-start {
+  background: white; color: #E53935; border: none;
+  border-radius: 50px; padding: 18px 55px;
+  font-size: 26px; font-weight: bold; cursor: pointer;
+  box-shadow: 0 7px 0 rgba(0,0,0,0.25);
+  transition: transform .1s, box-shadow .1s;
+}
+.btn-start:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+.title-themes {
+  margin-top: 24px; font-size: 15px; opacity: 0.85;
+  background: rgba(0,0,0,0.2); border-radius: 12px;
+  padding: 12px 20px; line-height: 2;
+}
+
+/* ─────────── WALK SCENE ─────────── */
+#scene-walk { background: #87CEEB; }
+
+/* Road / sky layers */
+.sky-layer {
+  position:absolute; top:0; width:100%; height:42%;
+  background: linear-gradient(to bottom, #29B6F6 0%, #81D4FA 55%, #E1F5FE 100%);
+}
+.sun {
+  position:absolute; top:32px; right:70px;
+  width:56px; height:56px;
+  background: radial-gradient(circle, #FFF176, #FFD600);
+  border-radius:50%;
+  box-shadow: 0 0 40px 10px rgba(255,220,0,0.45);
+}
+.cloud {
+  position:absolute; background:white;
+  border-radius:50px; height:22px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.cloud::before, .cloud::after {
+  content:''; position:absolute; background:white; border-radius:50%;
+}
+.cloud1 { width:90px; top:28px; left:40px; }
+.cloud1::before { width:40px; height:36px; top:-18px; left:10px; }
+.cloud1::after  { width:30px; height:30px; top:-12px; left:44px; }
+.cloud2 { width:70px; top:55px; left:220px; }
+.cloud2::before { width:35px; height:30px; top:-15px; left:8px; }
+.cloud2::after  { width:28px; height:25px; top:-10px; left:36px; }
+
+/* Buildings / trees */
+.scenery-left, .scenery-right {
+  position:absolute; top:30%; bottom:42%;
+  display:flex; align-items:flex-end;
+}
+.scenery-left { left:0; gap:3px; }
+.scenery-right { right:0; gap:3px; flex-direction:row-reverse; }
+
+.bldg { border-radius:4px 4px 0 0; position:relative; }
+.bldg::after {
+  content:''; position:absolute; top:8px; left:5px; right:5px; height:11px;
+  background:rgba(255,255,180,.7); border-radius:2px;
+}
+.tree-emoji { font-size:38px; line-height:1; }
+
+/* Ground / sidewalk strip */
+.sidewalk-layer {
+  position:absolute; top:41.5%; width:100%; height:7%;
+  background: linear-gradient(to bottom, #BDBDBD, #9E9E9E);
+}
+/* Sidewalk texture lines */
+.sidewalk-layer::before {
+  content:''; position:absolute; width:100%; height:100%;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.15) 0, rgba(255,255,255,0.15) 1px,
+    transparent 1px, transparent 60px
+  );
+}
+
+/* Road */
+.road-layer {
+  position:absolute; bottom:0; width:100%; height:51.5%; overflow:hidden;
+  background: #4A4A4A;
+}
+/* Road trapezoid surface */
+.road-surface {
+  position:absolute; bottom:0; left:0; right:0; top:0;
+  background: #545454;
+  clip-path: polygon(27% 0%, 73% 0%, 100% 100%, 0% 100%);
+}
+/* Road edge lines */
+.road-edge-l, .road-edge-r {
+  position:absolute; bottom:0; top:0; width:5px;
+  background: linear-gradient(to bottom, transparent, #FFFFFF 80%);
+}
+.road-edge-l { left:27%; transform-origin: bottom left; }
+.road-edge-r { right:27%; transform-origin: bottom right; }
+
+/* Center dashes – scrolling */
+@keyframes dashMove { from { top:-10px; } to { top:70px; } }
+.dash-col {
+  position:absolute; left:50%; top:0; bottom:0;
+  width:10px; transform:translateX(-50%);
+  overflow:hidden;
+}
+.dash-inner {
+  display:flex; flex-direction:column; align-items:center;
+  gap:18px; animation: dashMove 0.55s linear infinite;
+}
+.road-dash { width:10px; height:28px; background:#FFE082; border-radius:5px; flex-shrink:0; }
+
+/* Walk bob */
+@keyframes walkBob {
+  0%,100% { transform:translateY(0) rotate(0deg); }
+  25%      { transform:translateY(-5px) rotate(.4deg); }
+  75%      { transform:translateY(3px) rotate(-.4deg); }
+}
+.is-walking .road-view { animation: walkBob .55s ease-in-out infinite; }
+
+/* Road view wrapper */
+.road-view { position:absolute; width:100%; height:100%; }
+
+/* ── Friend character (right side of road) ── */
+#friend-char {
+  position:absolute; bottom:215px; right:18px;
+  font-size:66px; z-index:8;
+  transition: all .5s;
+  display:none;
+}
+@keyframes friendBob {
+  0%,100% { transform:translateY(0); }
+  50%      { transform:translateY(-8px); }
+}
+#friend-char.active { display:block; animation: friendBob 1.2s ease-in-out infinite; }
+
+/* ── Dialogue box ── */
+#dialogue-box {
+  position:absolute; bottom:178px; left:10px; right:10px;
+  background:rgba(255,255,255,0.97);
+  border:3px solid #333; border-radius:14px;
+  padding:12px 16px;
+  font-size:19px; line-height:1.75;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  display:none; z-index:12;
+}
+#dialogue-speaker {
+  font-size:13px; font-weight:bold; color:#E53935; margin-bottom:5px;
+}
+#dialogue-text { color:#1a1a1a; }
+
+/* ── Next / Action buttons ── */
+#btn-next {
+  position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+  background:#43A047; color:white; border:none;
+  border-radius:50px; padding:16px 44px;
+  font-size:21px; font-weight:bold; cursor:pointer;
+  box-shadow:0 6px 0 #2E7D32;
+  display:none; z-index:15; white-space:nowrap;
+  transition: transform .1s, box-shadow .1s;
+}
+#btn-next:active { transform:translateX(-50%) translateY(5px); box-shadow:0 1px 0 #2E7D32; }
+
+#btn-action {
+  position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+  background:#E53935; color:white; border:none;
+  border-radius:14px; padding:20px 28px;
+  font-size:22px; font-weight:bold; cursor:pointer;
+  box-shadow:0 6px 0 #B71C1C;
+  display:none; z-index:20;
+  text-align:center; line-height:1.4;
+  width:90%; max-width:420px;
+}
+@keyframes btnBounce {
+  0%,100% { transform:translateX(-50%) scale(1); box-shadow:0 6px 0 #B71C1C; }
+  50%      { transform:translateX(-50%) scale(1.05); box-shadow:0 8px 0 #B71C1C; }
+}
+#btn-action.pulsing { animation: btnBounce .45s ease-in-out infinite; }
+#btn-action:active { transform:translateX(-50%) scale(.97)!important; animation:none!important; }
+
+/* ── Timer bar ── */
+#timer-wrap {
+  position:absolute; top:14px; left:14px; right:14px;
+  height:20px; background:rgba(0,0,0,0.35);
+  border-radius:10px; overflow:hidden;
+  display:none; z-index:20;
+}
+#timer-bar {
+  height:100%; width:100%; border-radius:10px;
+  background: linear-gradient(to right, #4CAF50, #FFEB3B 50%, #F44336 90%);
+  transition: width .1s linear;
+}
+
+/* ── Warning label ── */
+#warning-label {
+  position:absolute; top:46px; left:50%; transform:translateX(-50%);
+  font-size:26px; font-weight:bold; color:#F44336;
+  text-shadow: 2px 2px 0 white,-2px -2px 0 white,2px -2px 0 white,-2px 2px 0 white;
+  white-space:nowrap; display:none; z-index:20;
+}
+@keyframes warnPulse {
+  0%,100% { transform:translateX(-50%) scale(1); }
+  50%      { transform:translateX(-50%) scale(1.12); }
+}
+#warning-label.active { display:block; animation: warnPulse .4s ease-in-out infinite; }
+
+/* ── Event characters (car, stranger, lurker) ── */
+#event-car {
+  position:absolute; font-size:72px; display:none;
+  transition: all .35s ease-in;
+  z-index:10; bottom:240px;
+}
+@keyframes carCross {
+  0%   { right:-120px; bottom:260px; font-size:60px; }
+  40%  { right:140px;  bottom:278px; font-size:100px; }
+  100% { right:600px;  bottom:260px; font-size:60px; }
+}
+#event-car.driving { display:block; animation: carCross 2.4s linear forwards; }
+
+#event-stranger-car {
+  position:absolute; left:-130px; bottom:230px;
+  font-size:72px; z-index:10; display:none;
+  transition: left 1s ease-out;
+}
+#event-stranger-car.active { display:block; left:6px; }
+
+#event-lurker {
+  position:absolute; font-size:70px; display:none; z-index:8;
+  transition: opacity .8s;
+}
+#event-lurker.active { display:block; }
+
+/* Dark overlay for alley event */
+#dark-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,0);
+  pointer-events:none; z-index:6;
+  transition: background 1.2s;
+}
+#dark-overlay.active { background:rgba(0,0,0,0.62); }
+
+/* ── Progress dots ── */
+#progress-bar {
+  position:absolute; top:10px; right:12px;
+  display:none; gap:6px; z-index:15; flex-direction:row;
+}
+#progress-bar.active { display:flex; }
+.dot {
+  width:14px; height:14px; border-radius:50%;
+  background:rgba(255,255,255,0.35); border:2px solid rgba(255,255,255,0.6);
+}
+.dot.done { background:#FFD600; border-color:#FFD600; }
+
+/* Speech bubble from car */
+.speech-bubble {
+  position:absolute; background:white;
+  border:3px solid #333; border-radius:14px;
+  padding:10px 14px; font-size:16px; line-height:1.5;
+  box-shadow:0 3px 12px rgba(0,0,0,0.3); white-space:nowrap;
+  z-index:15;
+  display:none;
+}
+.speech-bubble::after {
+  content:''; position:absolute; border:10px solid transparent;
+}
+#speech-stranger {
+  left:90px; bottom:295px;
+  display:none;
+}
+#speech-stranger::after {
+  border-top-color:#333; border-left-color:#333;
+  bottom:-22px; left:16px;
+  border-width:0 10px 12px 0;
+  border-right-color:transparent;
+  border-bottom-color:#333; border-left-color:transparent;
+  border-top-color:transparent;
+}
+/* simpler arrow */
+#speech-stranger::before {
+  content:''; position:absolute;
+  left:14px; bottom:-18px;
+  border:9px solid transparent;
+  border-top:10px solid white; z-index:1;
+}
+
+#speech-friend {
+  right:90px; bottom:300px;
+  display:none; text-align:right;
+}
+
+/* ─────────── GAME OVER ─────────── */
+#scene-gameover {
+  background: linear-gradient(135deg, #0d0d0d, #1a0a0a);
+  color:white; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:28px;
+}
+#scene-gameover.active { display:flex; }
+.go-title { font-size:50px; font-weight:bold; color:#FF5252; text-shadow:0 0 20px rgba(255,82,82,.5); margin-bottom:10px; }
+.go-emoji  { font-size:80px; margin:10px 0; }
+.go-what   { font-size:20px; line-height:1.75; margin-bottom:16px; color:#FFCCBC; }
+.go-lesson {
+  background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.25);
+  border-radius:14px; padding:14px 18px;
+  font-size:17px; line-height:1.9; color:#FFF9C4; margin-bottom:26px;
+}
+.btn-retry {
+  background:#FF5252; color:white; border:none;
+  border-radius:50px; padding:15px 44px;
+  font-size:22px; font-weight:bold; cursor:pointer;
+  box-shadow:0 5px 0 #C62828;
+  transition: transform .1s, box-shadow .1s;
+}
+.btn-retry:active { transform:translateY(4px); box-shadow:0 1px 0 #C62828; }
+
+/* ─────────── VICTORY ─────────── */
+#scene-victory {
+  background: linear-gradient(135deg, #1B5E20, #388E3C 50%, #66BB6A);
+  color:white; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:26px; overflow:hidden;
+}
+#scene-victory.active { display:flex; }
+@keyframes celebrate { 0%,100%{transform:scale(1) rotate(0deg);} 25%{transform:scale(1.12) rotate(-6deg);} 75%{transform:scale(1.12) rotate(6deg);} }
+.v-house { font-size:80px; animation: celebrate 1.1s ease-in-out infinite; }
+.v-title  { font-size:40px; font-weight:bold; text-shadow:3px 3px 0 rgba(0,0,0,0.2); margin:8px 0; }
+.v-mom    { font-size:75px; margin:6px 0; }
+.v-msg    { font-size:21px; line-height:1.85; margin-bottom:16px; }
+.v-lessons {
+  background:rgba(255,255,255,0.15); border-radius:14px;
+  padding:14px 20px; text-align:left; margin-bottom:22px;
+  font-size:17px; line-height:2.1;
+}
+.btn-again {
+  background:white; color:#2E7D32; border:none;
+  border-radius:50px; padding:15px 44px;
+  font-size:22px; font-weight:bold; cursor:pointer;
+  box-shadow:0 5px 0 rgba(0,0,0,0.2);
+}
+@keyframes confettiFall { from{transform:translateY(-30px) rotate(0deg);opacity:1;} to{transform:translateY(760px) rotate(720deg);opacity:0;} }
+.confetti { position:absolute; font-size:22px; animation:confettiFall linear infinite; pointer-events:none; }
+
+/* Responsive */
+@media (max-height:740px) { #game { transform:scale(0.88); transform-origin:top center; } }
+@media (max-height:640px) { #game { transform:scale(0.76); transform-origin:top center; } }
+@media (max-width:500px)  { #game { width:100vw; height:100vh; border-radius:0; } }
+</style>
+</head>
+<body>
+
+<div id="game">
+
+  <!-- ═══ TITLE ═══ -->
+  <div id="scene-title" class="scene active">
+    <div class="title-badge">🎮 あんぜんゲーム</div>
+    <div class="title-emoji">🏫➡️🏠</div>
+    <div class="title-main">ぶじに<br>かえろう！</div>
+    <div class="title-sub">がっこうから おうちまで<br>あんぜんに かえれるかな？</div>
+    <button class="btn-start" onclick="startGame()">▶ はじめる！</button>
+    <div class="title-themes">
+      🚗 こうつうあんぜん &nbsp;
+      👹 しらないひと &nbsp;
+      🌑 くらいみち
+    </div>
+  </div>
+
+  <!-- ═══ WALK SCENE (main game) ═══ -->
+  <div id="scene-walk" class="scene">
+    <!-- Road view -->
+    <div class="road-view" id="road-view">
+      <div class="sky-layer">
+        <div class="sun"></div>
+        <div class="cloud cloud1"></div>
+        <div class="cloud cloud2"></div>
+      </div>
+      <!-- Scenery left -->
+      <div class="scenery-left">
+        <div class="bldg" style="width:48px;height:72px;background:#EF9A9A;"></div>
+        <div class="tree-emoji">🌳</div>
+        <div class="bldg" style="width:42px;height:58px;background:#90CAF9;"></div>
+        <div class="tree-emoji">🌲</div>
+      </div>
+      <!-- Scenery right -->
+      <div class="scenery-right">
+        <div class="bldg" style="width:44px;height:65px;background:#A5D6A7;"></div>
+        <div class="tree-emoji">🌳</div>
+        <div class="bldg" style="width:50px;height:78px;background:#FFCC80;"></div>
+        <div class="tree-emoji">🌲</div>
+      </div>
+      <div class="sidewalk-layer"></div>
+      <div class="road-layer">
+        <div class="road-surface"></div>
+        <div class="road-edge-l"></div>
+        <div class="road-edge-r"></div>
+        <div class="dash-col">
+          <div class="dash-inner">
+            <div class="road-dash"></div><div class="road-dash"></div>
+            <div class="road-dash"></div><div class="road-dash"></div>
+            <div class="road-dash"></div><div class="road-dash"></div>
+            <div class="road-dash"></div><div class="road-dash"></div>
+            <div class="road-dash"></div><div class="road-dash"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /road-view -->
+
+    <!-- Event elements -->
+    <div id="event-car">🚗</div>
+    <div id="event-stranger-car">🚗</div>
+    <div id="event-lurker">👹</div>
+    <div id="dark-overlay"></div>
+
+    <!-- Speech bubbles -->
+    <div class="speech-bubble" id="speech-stranger">
+      👹「ちょっと、みちを<br>おしえてくれないかな？」
+    </div>
+    <div class="speech-bubble" id="speech-friend">
+      👧「ねえ、こっちの<br>みちからかえろうよ！」
+    </div>
+
+    <!-- Friend character -->
+    <div id="friend-char">👧</div>
+
+    <!-- Progress dots -->
+    <div id="progress-bar">
+      <div class="dot" id="dot0"></div>
+      <div class="dot" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+    </div>
+
+    <!-- Timer -->
+    <div id="timer-wrap"><div id="timer-bar"></div></div>
+
+    <!-- Warning label -->
+    <div id="warning-label">⚠️ きけん！！</div>
+
+    <!-- Dialogue -->
+    <div id="dialogue-box">
+      <div id="dialogue-speaker"></div>
+      <div id="dialogue-text"></div>
+    </div>
+
+    <!-- Buttons -->
+    <button id="btn-next" onclick="nextStep()">つぎへ ▶</button>
+    <button id="btn-action" onclick="pressAction()"></button>
+  </div>
+
+  <!-- ═══ GAME OVER ═══ -->
+  <div id="scene-gameover" class="scene">
+    <div class="go-title">😱 ゲームオーバー</div>
+    <div class="go-emoji" id="go-emoji">💥</div>
+    <div class="go-what" id="go-what"></div>
+    <div class="go-lesson" id="go-lesson"></div>
+    <button class="btn-retry" onclick="restartGame()">🔄 もういちど</button>
+  </div>
+
+  <!-- ═══ VICTORY ═══ -->
+  <div id="scene-victory" class="scene">
+    <div class="v-house">🏠</div>
+    <div class="v-title">やった！ぶじにかえれた！</div>
+    <div class="v-mom">👩‍👧</div>
+    <div class="v-msg">「おかえり〜！よくがんばったね！」<br>ママが にっこり むかえてくれました♪</div>
+    <div class="v-lessons">
+      ✅ こうさてんでは いちどとまる<br>
+      ✅ しらないひとには ついていかない<br>
+      ✅ くらいみち・ひとのいないみちは いかない
+    </div>
+    <button class="btn-again" onclick="restartGame()">🎮 もういちどあそぶ</button>
+  </div>
+
+</div><!-- /game -->
+
+<script>
+/* ════════════════════════════════════
+   GAME STATE
+════════════════════════════════════ */
+let stepIndex = 0;
+let timerRAF  = null;
+let timerEnd  = 0;
+let actionReady = false;
+let actionDone  = false;
+let currentEvent = null;
+
+/* ════════════════════════════════════
+   STORY SCRIPT
+   type: 'dialogue' | 'event' | 'scene-change'
+════════════════════════════════════ */
+const SCRIPT = [
+  /* ── 導入 ── */
+  { type:'dialogue', speaker:'ナレーター', text:'きょうも がっこうが おわりました。\nさあ、おうちに かえろう！', friend:false },
+  { type:'dialogue', speaker:'ともこちゃん', text:'ねえ、いっしょに かえろうよ！\nきょうも たのしかったね〜♪', friend:true },
+  { type:'dialogue', speaker:'あなた', text:'うん！はやく おうちに かえりたいな。\nいっしょに かえろう！', friend:true },
+  { type:'dialogue', speaker:'ナレーター', text:'ふたりで なかよく あるいていました。\nでも この せかいには…\n👹 おにが まぎれこんでいます！', friend:true },
+
+  /* ── イベント1: 交通安全 ── */
+  { type:'dialogue', speaker:'ナレーター', text:'こうさてんに さしかかりました。\nきをつけて！', friend:true },
+  {
+    type: 'event',
+    id: 'traffic',
+    setup: {
+      warning: '⚠️ 車が来てる！！',
+      carActive: true,
+    },
+    buttonText: '🛑　とまれ！\nいちどとまろう！',
+    timeLimit: 4200,
+    failEmoji:  '💥',
+    failWhat:   '車にぶつかってしまいました…\n👹 おにのドライバーに ねらわれてしまった！',
+    failLesson: '🚗 こうさてんや かどをまがるときは\nかならず いちどとまって\nみぎ・ひだり・みぎを かくにんしよう！',
+  },
+  { type:'dot', dot:0 },
+  { type:'dialogue', speaker:'ともこちゃん', text:'あぶなかったね〜！\nよかった とまれたね！', friend:true },
+  { type:'dialogue', speaker:'ナレーター', text:'きちんと とまれた あなたは えらい！\nつづけて あるいていきます。', friend:true },
+
+  /* ── イベント2: 不審者 ── */
+  { type:'dialogue', speaker:'ナレーター', text:'くるまが ゆっくり ちかづいてきます。\nなんだろう…？', friend:true },
+  {
+    type: 'event',
+    id: 'stranger',
+    setup: {
+      warning: '⚠️ しらないひとだ！！',
+      strangerActive: true,
+    },
+    buttonText: '🙅 ごめんなさい！\nおとなのひとに きいてください！',
+    timeLimit: 4000,
+    failEmoji:  '😱',
+    failWhat:   'くるまに つれていかれてしまいました…\n👹 おにが へんそうしていたんだ！',
+    failLesson: '🚗 しらないひとには ついていかない！\n「おかあさんに きいてくる」といって\nはやく にげよう！\nきけんをかんじたら おおきなこえで「たすけて！」',
+  },
+  { type:'dot', dot:1 },
+  { type:'dialogue', speaker:'ともこちゃん', text:'よかった〜！ちゃんと ことわれたね！', friend:true },
+  { type:'dialogue', speaker:'ナレーター', text:'しらないひとに ついていっては いけません。\nあと もうすこしで おうちだよ！', friend:true },
+
+  /* ── イベント3: 暗い道 ── */
+  {
+    type: 'event',
+    id: 'darkroad',
+    setup: {
+      warning: '⚠️ あぶない みちだ！！',
+      darkActive: true,
+      friendSpeech: true,
+    },
+    buttonText: '🌟 いつもの みちで\nかえろう！',
+    timeLimit: 3800,
+    failEmoji:  '🌑',
+    failWhat:   'くらいみちに はいってしまいました…\nかげに かくれていた 👹 おに に つれさられた！',
+    failLesson: '🌑 くらいみち・ひとのいない みちは あぶない！\nいつもの あかるい みちを とおろう。\nちがう みちに いくときは おうちのひとに いってからにしよう！',
+  },
+  { type:'dot', dot:2 },
+  { type:'dialogue', speaker:'ともこちゃん', text:'そうだね！いつもの みちが いちばんだね！', friend:true },
+
+  /* ── 帰宅 ── */
+  { type:'dialogue', speaker:'ナレーター', text:'もうすぐ おうちです！\nきょうも よく がんばったね！', friend:true },
+  { type:'victory' },
+];
+
+/* ════════════════════════════════════
+   HELPERS
+════════════════════════════════════ */
+function showScene(id) {
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  document.getElementById('scene-' + id).classList.add('active');
+}
+
+function setWalking(on) {
+  const rv = document.getElementById('road-view');
+  on ? rv.classList.add('is-walking') : rv.classList.remove('is-walking');
+}
+
+function showDialogue(speaker, text, showNext) {
+  const box = document.getElementById('dialogue-box');
+  document.getElementById('dialogue-speaker').textContent = speaker ? '【 ' + speaker + ' 】' : '';
+  document.getElementById('dialogue-text').textContent = text;
+  box.style.display = 'block';
+  document.getElementById('btn-next').style.display = showNext ? 'block' : 'none';
+  document.getElementById('btn-action').style.display = 'none';
+}
+
+function hideDialogue() {
+  document.getElementById('dialogue-box').style.display = 'none';
+}
+
+function setFriend(visible) {
+  const f = document.getElementById('friend-char');
+  if (visible) {
+    f.classList.add('active');
+  } else {
+    f.classList.remove('active');
+  }
+}
+
+function resetEventUI() {
+  document.getElementById('event-car').classList.remove('driving');
+  document.getElementById('event-car').style.display = 'none';
+  document.getElementById('event-stranger-car').classList.remove('active');
+  document.getElementById('event-stranger-car').style.display = 'none';
+  document.getElementById('speech-stranger').style.display = 'none';
+  document.getElementById('speech-friend').style.display = 'none';
+  document.getElementById('event-lurker').classList.remove('active');
+  document.getElementById('event-lurker').style.display = 'none';
+  document.getElementById('dark-overlay').classList.remove('active');
+  document.getElementById('warning-label').classList.remove('active');
+  document.getElementById('timer-wrap').style.display = 'none';
+  document.getElementById('btn-action').classList.remove('pulsing');
+  document.getElementById('btn-action').style.display = 'none';
+  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('dialogue-box').style.display = 'none';
+  if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF = null; }
+}
+
+/* ════════════════════════════════════
+   TIMER
+════════════════════════════════════ */
+function startTimer(ms, onExpire) {
+  timerEnd = performance.now() + ms;
+  document.getElementById('timer-wrap').style.display = 'block';
+
+  function tick() {
+    const remaining = timerEnd - performance.now();
+    const pct = Math.max(0, remaining / ms * 100);
+    document.getElementById('timer-bar').style.width = pct + '%';
+    if (remaining <= 0) {
+      document.getElementById('timer-wrap').style.display = 'none';
+      onExpire();
+      return;
+    }
+    timerRAF = requestAnimationFrame(tick);
+  }
+  timerRAF = requestAnimationFrame(tick);
+}
+
+function stopTimer() {
+  if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF = null; }
+  document.getElementById('timer-wrap').style.display = 'none';
+}
+
+/* ════════════════════════════════════
+   GAME OVER
+════════════════════════════════════ */
+function triggerGameOver(ev) {
+  stopTimer();
+  resetEventUI();
+  setWalking(false);
+  document.getElementById('go-emoji').textContent  = ev.failEmoji;
+  document.getElementById('go-what').textContent   = ev.failWhat;
+  document.getElementById('go-lesson').textContent = ev.failLesson;
+  showScene('gameover');
+}
+
+/* ════════════════════════════════════
+   EVENT: TRAFFIC
+════════════════════════════════════ */
+function runEventTraffic(ev) {
+  currentEvent = ev;
+  actionDone = false;
+
+  // Show warning
+  const warn = document.getElementById('warning-label');
+  warn.textContent = ev.setup.warning;
+  warn.classList.add('active');
+
+  // Animate car after short delay
+  setTimeout(() => {
+    const car = document.getElementById('event-car');
+    car.textContent = '🚗';
+    car.style.display = 'block';
+    car.classList.add('driving');
+  }, 600);
+
+  // Show action button after 0.7s
+  setTimeout(() => {
+    const btn = document.getElementById('btn-action');
+    btn.textContent = ev.buttonText;
+    btn.style.display = 'block';
+    btn.classList.add('pulsing');
+    actionReady = true;
+
+    startTimer(ev.timeLimit, () => {
+      if (!actionDone) triggerGameOver(ev);
+    });
+  }, 700);
+}
+
+/* ════════════════════════════════════
+   EVENT: STRANGER
+════════════════════════════════════ */
+function runEventStranger(ev) {
+  currentEvent = ev;
+  actionDone = false;
+  setWalking(false);
+
+  const warn = document.getElementById('warning-label');
+  warn.textContent = ev.setup.warning;
+  warn.classList.add('active');
+
+  // Stranger car slides in
+  setTimeout(() => {
+    const sc = document.getElementById('event-stranger-car');
+    sc.style.display = 'block';
+    sc.textContent = '🚗';
+    requestAnimationFrame(() => sc.classList.add('active'));
+    setTimeout(() => {
+      document.getElementById('speech-stranger').style.display = 'block';
+    }, 900);
+  }, 400);
+
+  // Action button
+  setTimeout(() => {
+    const btn = document.getElementById('btn-action');
+    btn.textContent = ev.buttonText;
+    btn.style.display = 'block';
+    btn.classList.add('pulsing');
+    actionReady = true;
+
+    startTimer(ev.timeLimit, () => {
+      if (!actionDone) triggerGameOver(ev);
+    });
+  }, 1000);
+}
+
+/* ════════════════════════════════════
+   EVENT: DARK ROAD
+════════════════════════════════════ */
+function runEventDarkroad(ev) {
+  currentEvent = ev;
+  actionDone = false;
+  setWalking(false);
+
+  // Friend speech bubble
+  const fs = document.getElementById('speech-friend');
+  fs.style.display = 'block';
+
+  // Darken after moment
+  setTimeout(() => {
+    document.getElementById('dark-overlay').classList.add('active');
+
+    // Show lurker
+    setTimeout(() => {
+      const lurker = document.getElementById('event-lurker');
+      lurker.style.cssText = 'bottom:255px; left:180px;';
+      lurker.textContent = '👹';
+      lurker.style.display = 'block';
+      lurker.classList.add('active');
+
+      const warn = document.getElementById('warning-label');
+      warn.textContent = ev.setup.warning;
+      warn.classList.add('active');
+
+      const btn = document.getElementById('btn-action');
+      btn.textContent = ev.buttonText;
+      btn.style.display = 'block';
+      btn.classList.add('pulsing');
+      actionReady = true;
+
+      startTimer(ev.timeLimit, () => {
+        if (!actionDone) triggerGameOver(ev);
+      });
+    }, 900);
+  }, 800);
+}
+
+/* ════════════════════════════════════
+   ACTION BUTTON PRESSED
+════════════════════════════════════ */
+function pressAction() {
+  if (!actionReady || actionDone) return;
+  actionDone = true;
+  actionReady = false;
+  stopTimer();
+
+  // Flash green success
+  const btn = document.getElementById('btn-action');
+  btn.classList.remove('pulsing');
+  btn.style.background = '#43A047';
+  btn.style.boxShadow = '0 6px 0 #2E7D32';
+  btn.textContent = '✅ セーフ！';
+
+  // Clean up event visuals
+  document.getElementById('warning-label').classList.remove('active');
+  document.getElementById('dark-overlay').classList.remove('active');
+  document.getElementById('speech-stranger').style.display = 'none';
+  document.getElementById('speech-friend').style.display = 'none';
+
+  setTimeout(() => {
+    resetEventUI();
+    setWalking(true);
+    stepIndex++;
+    runStep();
+  }, 1400);
+}
+
+/* ════════════════════════════════════
+   STEP RUNNER
+════════════════════════════════════ */
+function runStep() {
+  if (stepIndex >= SCRIPT.length) {
+    showScene('victory');
+    spawnConfetti();
+    return;
+  }
+
+  const step = SCRIPT[stepIndex];
+
+  if (step.type === 'dialogue') {
+    setFriend(step.friend !== false);
+    setWalking(true);
+    showDialogue(step.speaker, step.text, true);
+    return;
+  }
+
+  if (step.type === 'dot') {
+    const dot = document.getElementById('dot' + step.dot);
+    if (dot) dot.classList.add('done');
+    stepIndex++;
+    runStep();
+    return;
+  }
+
+  if (step.type === 'event') {
+    resetEventUI();
+    setWalking(true);
+    actionReady = false;
+
+    if (step.id === 'traffic')   { runEventTraffic(step); }
+    if (step.id === 'stranger')  { runEventStranger(step); }
+    if (step.id === 'darkroad')  { runEventDarkroad(step); }
+    return;
+  }
+
+  if (step.type === 'victory') {
+    showScene('victory');
+    spawnConfetti();
+    return;
+  }
+}
+
+function nextStep() {
+  stepIndex++;
+  runStep();
+}
+
+/* ════════════════════════════════════
+   CONFETTI
+════════════════════════════════════ */
+function spawnConfetti() {
+  const v = document.getElementById('scene-victory');
+  const emojis = ['🌟','⭐','🎉','🎊','✨','🏆','🎈'];
+  for (let i = 0; i < 18; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    c.style.left = Math.random() * 100 + '%';
+    c.style.animationDuration = (2.5 + Math.random() * 2.5) + 's';
+    c.style.animationDelay = (Math.random() * 2) + 's';
+    v.appendChild(c);
+  }
+}
+
+/* ════════════════════════════════════
+   START / RESTART
+════════════════════════════════════ */
+function startGame() {
+  stepIndex = 0;
+  actionReady = false;
+  actionDone  = false;
+  currentEvent = null;
+
+  // Reset dots
+  ['dot0','dot1','dot2'].forEach(id => {
+    const d = document.getElementById(id);
+    if (d) d.classList.remove('done');
+  });
+
+  resetEventUI();
+
+  // Restore action button style
+  const btn = document.getElementById('btn-action');
+  btn.style.background = '#E53935';
+  btn.style.boxShadow  = '0 6px 0 #B71C1C';
+
+  showScene('walk');
+  document.getElementById('progress-bar').classList.add('active');
+  setFriend(false);
+  setWalking(true);
+  runStep();
+}
+
+function restartGame() {
+  // Remove old confetti
+  document.querySelectorAll('.confetti').forEach(c => c.remove());
+  showScene('title');
+}
+</script>
+</body>
+</html>
